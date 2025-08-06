@@ -1,0 +1,1 @@
+JOB_SECTION_URL = 'https://www.linkedin.com/jobs/search'
