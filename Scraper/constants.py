@@ -1,0 +1,7 @@
+JOB_SEARCH_URL = 'https://www.linkedin.com/jobs/search?keywords={0}&location={1}'
+JOB_CARD_ADDRESS = 'section ul.jobs-search__results-list li div.job-search-card'
+TITLE_ADDRESS = 'div h3'
+COMPANY_ADDRESS = 'div h4 a'
+LOCATION_ADDRESS = 'div div span.job-search-card__location'
+LIST_DATE_ADDRESS = 'div div time'
+LINK_ADDRESS = 'a'
