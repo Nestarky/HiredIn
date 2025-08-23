@@ -1,95 +1,141 @@
-import pandas as pd
-from time import sleep
-from Drivers import *
-from Scraper import constants as CONST
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+import pandas as pd
+from time import sleep
+from typing import Literal
+
+from Drivers import *
+from Scraper import constants as CONST
+
 
 class LinkedIn():
 
     def __init__(
         self,
-        WebDriver: Chrome | Firefox
+        WebDriver: Literal['Chrome', 'Firefox']
     ) -> None:
         
-        self.WebDriver = WebDriver
-        self.csv_result = None
+        self.WebDriver = Chrome() if WebDriver == 'Chrome' else Firefox()
+
+    def search(
+        self,
+        job,
+        location
+    ):
+        with Search(
+            LinkedIn_session= self,
+            Job= job,
+            Location= location
+        ) as Search_session:
+            result = Search_session.fetch()
+
+        return result
+
+
+
+
+class Search():
+
+    def __init__(
+        self,
+        LinkedIn_session: LinkedIn,
+        Job: str,
+        Location: str
+        
+    ) -> None:
+        
+        self.LinkedIn_session = LinkedIn_session
+        self.Result = None
+
+        self.Job = Job.replace(' ' , '%20')
+        self.Location = Location.replace(' ' , '%20')
+
+        self.LinkedIn_session.WebDriver.get(
+            CONST.JOB_SEARCH_URL.format(
+                self.Job, 
+                self.Location
+            )
+        )
+        
+        ActionChains(
+            driver= self.LinkedIn_session.WebDriver
+        ).send_keys(Keys.ESCAPE).perform()
 
     def __enter__(self):
         return self
     
     def __exit__(self, exc_type, exc, traceback):
-        return self.WebDriver.__exit__(exc_type, exc, traceback)
+        #TODO Handle cookies
+        pass
 
-    def search(
-        self,
-        # job,
-        # location
-    ):
-        self.WebDriver.get(url= CONST.JOB_SECTION_URL)
-        ActionChains(self.WebDriver).send_keys(Keys.ESCAPE).perform()
-        job_input = self.WebDriver.find_element(By.ID , 'job-search-bar-keywords')
-        location_input = self.WebDriver.find_element(By.ID , 'job-search-bar-location')
-        job_input.clear()
-        job_input.send_keys('Data Analyst')
-        location_input.clear()
-        location_input.send_keys('United States')
-        ActionChains(self.WebDriver).send_keys(Keys.ENTER).perform()
-        self.scraper()
+    def fetch(self):
 
-    def scraper(self):
         jobs_info = list()
-        sleep(1)
-        jobs = self.WebDriver.find_elements(By.CSS_SELECTOR , 'div.job-search-card')
-        for job in jobs[:70]:
-            ActionChains(self.WebDriver).scroll_to_element(job).perform()
-            job_title = WebDriverWait(driver= job , timeout= 5).until(
+        jobs = WebDriverWait(self.LinkedIn_session.WebDriver, timeout= 5).until(
+            EC.presence_of_all_elements_located(
+                (
+                    By.CSS_SELECTOR,
+                    CONST.JOB_CARD_ADDRESS
+                )
+            )
+        )
+
+        for job in jobs[:50]:
+            
+            title = WebDriverWait(driver= job , timeout= 5).until(
                 EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR , 'div h3')
+                    (
+                        By.CSS_SELECTOR, 
+                        CONST.TITLE_ADDRESS
+                    )
                 )
             ).text
             company = WebDriverWait(driver= job , timeout= 5).until(
                 EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR , 'div h4 a')
+                    (
+                        By.CSS_SELECTOR,
+                        CONST.COMPANY_ADDRESS
+                    )
                 )
             ).text
             location = WebDriverWait(driver= job , timeout= 5).until(
                 EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR , 'div div span.job-search-card__location')
+                    (
+                        By.CSS_SELECTOR,
+                        CONST.LOCATION_ADDRESS
+                    )
                 )
             ).text
             list_date = WebDriverWait(driver= job , timeout= 5).until(
                 EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR , 'div div time')
+                    (
+                        By.CSS_SELECTOR,
+                        CONST.LIST_DATE_ADDRESS
+                    )
                 )
             ).text
             link = WebDriverWait(driver= job , timeout= 5).until(
                 EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR , 'a')
+                    (
+                        By.CSS_SELECTOR,
+                        CONST.LINK_ADDRESS
+                    )
                 )
             ).get_attribute('href')
-            jobs_info.append([job_title,
+            
+            jobs_info.append([title,
                               company,
                               location,
                               list_date,
                               link])
-
-
-        self.csv_result = pd.DataFrame(
+        
+        self.Result = pd.DataFrame(
             jobs_info,
-            columns= ["Job Title" , "Company" , "Location" , "List Date" , "Link"],
+            columns= ["Job Title" , "Company" , "Location" , "List Date" , "Link"]
         )
-        self.csv_result.to_csv('/home/nestark/Codes/.Others/proj_result/test.csv' , index= False)
 
-
-
-
-class search():
-    pass
-
-class suggestion():
-    pass
+        return self.Result
