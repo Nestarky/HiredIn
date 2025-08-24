@@ -10,7 +10,7 @@ if ("session" not in st.session_state):
     st.session_state.session = LinkedIn(WebDriver= 'Firefox')
 
 left, middle, right = st.columns(spec= 3)
-middle.image(image= r"./Logo.png")
+middle.image(image= r"Logo/Logo.png")
 
 @st.dialog(title= "Preview", width= "large")
 def preview_and_save():
